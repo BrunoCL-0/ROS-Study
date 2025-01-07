@@ -1,0 +1,10 @@
+                PYTHON
+1- cria um file com .py no final
+2- executa no terminal python <your_program_name>.py
+3- importando biblioteca - from <name_of_the_module> import <method_or_class_to_be_imported>
+rc = RobotControl() - criando um variavel para os metodos dessa classe, exemplo: se qu quiser q o robo pare muito provavelmente notaria rc.stop
+a = rc.get_laser(360) - esta executando a classe get laser q mede a distancia ate o laser alcançar determinado objeto que esta a 360 grauas dele , e guarda essa informação na variavel "a" 
+print ("The distance measured is: ", a) - ja sabe como funciona 
+python3 no terminal pra programar em python e exit() pra sair
+se quiser fazer string - ex : a='sting' e dps print
+cntrl+l limpa o terminal
