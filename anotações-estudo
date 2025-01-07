@@ -1,0 +1,70 @@
+					ANOTAÇÕES
+					
+De tempos em tempos executar:	
+				
+sudo apt update e sudo apt upgrade(para atualização do sistema)					
+
+
+					CODIGOS LINUX:
+
+Cntrl+alt+t=terminal
+
+cd- entra na pasta 
+
+ls- lista oq tem na pasta q esta
+
+pwd-mostra o caminho pra onde vc esta
+
+cd .. - volta uma pasta	
+
+mkdir nome - cria a pasta(folder) "nome"
+
+touch my_file.txt - cria um txt(file)(pra acessar ele é vi my_file.txt ,usa a letra i pra modo de edição insert, :wq pra salvar e :q pra sair)
+
+mv my_scripts move_bb8_pkg - move o documento my_scripts para move_bb8_pkg
+
+cp move_bb8_square.py move_bb8_square_copy.py - copia o documento(cp <file/folder we want to copy> <name of the new file/folder>)
+(observação - folder usa cp -r e não apenas cp)
+
+rm move_bb8_square_copy.py - remove oq vem em seguida 
+(observação - folder usa rm-r e não apenas rm)
+
+					COMANDOS MAIS AVANÇADOS
+		
+ls -la -detalhamento maior do ls(data e etc)
+ls -l - permissoes do usuario 
+chmod +x move_bb8_square.py - adicionou a permissão x a todos os grupos
+chmod g+w move_bb8_square.py -  add permission for the group(rwxr-xr-x -> rwxrwxr-x)
+chmod go-x move_bb8_square.py - remove permission(rwxrwxr-x ->rwxrw-r--)
+obs: chmod 742 arquivo.py - Usuário(ler, escrever e executar),Grupo(ler),Outros(escrever)- obs: execução(1, ou seja, usuario(4+2+1)
+
+BASH SCRIPT:
+
+touch bash_script.sh - CRIA
+
+#!/bin/bash(DENTRO DO VI)
+
+echo Hello there, Developers!(DENTRO DO VI)
+
+./bash_script.sh(executa)
+
+SOURCE - Se você executar um script diretamente (exemplo: ./script.sh), ele será executado em um novo processo de shell e as alterações feitas (como definir variáveis) não afetarão o shell atual. Já com source script.sh, as alterações ocorrem no shell atual
+ls | grep bb8- filtra e lista apenas oque tem escrito bb8
+ps faux | grep test_process - ps faux vai listar detalhes do processo que esta acontecendo no momento e o grep vai filtrar pro filter especifico mencionado
+obs: finalizar o processo com cntrl c ou cntrl z e dependendo usar o comando bg e kill com o id correto para finalizar o processo
+sudo apt-get update - sudo permite vc ser tipo o administrador, dessa forma com o resto do codigo vc esta atualizando as bibliotecas disponiveis para uso
+
+
+				ROS
+rosrun move_bb8_pkg test_process.py(EXEMPLO) - rosrun <nome_do_pacote> <arquivo_executável>
+
+				SSH PROTOCOL(conexão com robo)
+1-Use ps faux | grep ssh 
+2-Observe que dos ssh listados, tem "-p" que especifica a porta do server SSH
+3-Executa o comando ssh student@127.0.0.1 -p 8090 (127.0.0.1 é o ip e 8090 é o numero associado ao ssh listado anteriormente "sudo /usr/sbin/sshd -p 8090 -D" e student é o nome da conta)
+4-Exit pra sair			
+				
+
+
+
+
