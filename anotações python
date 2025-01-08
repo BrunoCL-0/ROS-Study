@@ -1,10 +1,60 @@
                 PYTHON
+
 1- cria um file com .py no final
+
 2- executa no terminal python <your_program_name>.py
+
 3- importando biblioteca - from <name_of_the_module> import <method_or_class_to_be_imported>
+
 rc = RobotControl() - criando um variavel para os metodos dessa classe, exemplo: se qu quiser q o robo pare muito provavelmente notaria rc.stop
+
 a = rc.get_laser(360) - esta executando a classe get laser q mede a distancia ate o laser alcançar determinado objeto que esta a 360 grauas dele , e guarda essa informação na variavel "a" 
+
 print ("The distance measured is: ", a) - ja sabe como funciona 
+
 python3 no terminal pra programar em python e exit() pra sair
+
 se quiser fazer string - ex : a='sting' e dps print
+
 cntrl+l limpa o terminal
+
+              Data types
+
+Na string se fizer s1 = 'This is a string' e print (s1[0]) output sera "T"
+
+A lista é separado por [] e tambem da pra printar parte da lista, exemplo :
+
+l = [1, 2, 3, 'This', 'is', 'a', 'list']
+print (l[2])  - output - "3"
+print (l[0:3]) - output "[1,2,3]"
+print (l[3:]) - output "['This', 'is', 'a', 'list'"
+
+A lista tambem pode ser atualizada, ou seja, no exemplo anterior se dps de definir o l e printar eu mudasse para l[2] = 8 , e fizessse print(l) o caracter 3 seria substituido por 8
+
+input - exemplo:
+name = input("What's your name? ")
+print("Nice to meet you, " + name)
+
+print com variavel durante texto - print("So next year you will be! %d "years old!" % age2) 
+
+condicionais - if dps elif dps else
+
+comando for- for x in y - tbm se usa range
+ex:for i in range(5):
+    print (i) output- 0 1 2 3 4 5
+
+          METHOD
+usado com def
+exemplo:
+def mymethod():
+    print ("The method mymethod() has been called")
+mymethod()
+output- oque esta dentro do print
+
+method parameters exemple:
+def add(a,b):
+    res = a + b
+    print (res)  
+add(2,2) - output- 4
+
+FICOU FALTANDO FAZER OS EXERCICIOS PARA FIXAR O CONTEUDO
