@@ -57,4 +57,4 @@ def add(a,b):
     print (res)  
 add(2,2) - output- 4
 
-FICOU FALTANDO FAZER OS EXERCICIOS PARA FIXAR O CONTEUDO
+Fazer as anotacoes q perdeu de class pq fechou git e fazer o ultimo exercicio de python
