@@ -1,0 +1,99 @@
+              ROS2 BASICS IN 5 DAYS(PYTHON)
+
+Estrutura basica de comando: ros2 run <package_name> <executable_file> ou ros2 launch <package_name> <launch_file>
+
+O Package eh onde ficara todos os programas, e ele fica dentro do workspaces, pra um projeto diferente devera ser usado outro workspace pra isolar o projeto
+OBS: Sempre que for criar uma package, deve estar dentro do src dentro do workspace, ou seja ros2_ws/src por exemplo
+
+Criando um Package - ros2 pkg create --build-type ament_python <package_name> --dependencies <package_dependency_1> <package_dependency_2> - package name é o nome que vc quer, package dependency é o package que seu package depende e ament_python 
+indica que é um package em python
+
+Colcon build - deve ser executado no workspace antes do src - Deve ser executado pois o workspace foi criado, compila tudo do src
+Apos o colcon build deve-se usar source install/setup.bash para atualizar o ambiente do terminal e o sistema reconhecer os pacotes
+Para projetos grandes usar colcon build --packages-select <package_name> - para não precisar baixar tudo do src - exemplo: colcon build --packages-select mars_rover_systems
+
+ros2 pkg list - todos os packages listados, da pra filtrar com | grep <nome do package>
+
+Exemplo de codigo do curso: 
+
+#!/usr/bin/env python  - localiza a instalação python no sistema
+import rclpy
+
+def main(args=None):
+    # initialize the ROS communication
+    rclpy.init(args=args) - comando obrigatorio em ROS que configura o ambiente necessário para o script interagir com o ROS 
+    # print a message to the terminal
+    print("Mars rover 1 is alive...")
+    # shutdown the ROS communication
+    rclpy.shutdown() - finaliza a interação
+
+if __name__ == '__main__':       - significa que o script está sendo executado diretamente, e não importado como um módulo em outro programa, tontando verdadeiro e o def main eh executado
+    main() #call the main function
+
+OBS IMPORTANTE: no curso, o setup.py foi modificado para exercutar o python file com ros2, nao sei se eh algo que sempre tera que ser feito ou não, assim, o codigo pode ser rodado com : ros2 run <name_of_the_package> <entry_point_name> ou seja
+ros2 run mars_rover_systems heartbeat_executable
+
+              NODE BASICS
+exemplo:
+#!/usr/bin/env python
+
+import rclpy
+import time
+from rclpy.node import Node
+
+def main(args=None):
+    # initialize the ROS communication
+    rclpy.init(args=args)
+    
+    # Create a node
+    node = Node('mars_rover_1')              - Iniciando um ROS2 node com o nome mars_rover_1
+
+    i = 0
+    max_i = 50
+    while i < max_i:
+        i += 1
+        ros_time_stamp = node.get_clock().now()   - pega o tempo de todo o sistema ROS2
+        # print a message to the terminal
+        node.get_logger().info(str(i)+":Mars rover 1 is alive..."+str(ros_time_stamp))   - o print do node é com esse log , ode.get_logger() é um método que retorna o logger associado ao nó e info() é um método desse logger 
+
+        # Wait for 1 second
+        time.sleep(1)   
+    
+    # shutdown the ROS communication
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()  # Call the main function
+
+              LAUNCH
+Basicamente serve para rodar mais de um node simultaneamente, se cria uma pasta lauch dentro da pasta que esta salvo sua area de trabalho(ex: ros2_ws/src/mars_rover_systems) e \dentro cria um arquivo .py que executara o lauch juntando os nodes
+exemplo de codigo interno do .py do lauch : 
+
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package='mars_rover_systems',
+            executable='heartbeat_executable',
+            output='screen'),
+        Node(
+            package='mars_rover_systems',
+            executable='heartbeat_executable2',
+            output='screen')
+    ])
+
+Explicação: 
+package=The name of the package that contains the ROS2 program to execute.
+executable=The name of the Python entry point defined in the setup.py.
+output=The type of output channel for printing the program's output.
+Observação: Deve-se editar tambem o setup.py para achar o .launch.py files
+
+                    TOPIC IN ROS
+
+ros2 topic list | grep cmd_vel - lista os topicos e filtra para cmd_vel
+ros2 topic info /cmd_vel - diz o tipo de interface associada ao topico em questão, quantos nodes publicam dados nesse topico e número de nós ativos que leem dados desse tópico
+ros2 interface show sensor_msgs/msg/LaserScan - mostra a estrutura do laserscan 
+ros2 topic echo /laser_scan --field ranges - serve para mostrar (printar) apenas o ranges field, ao executar mostrara as distancias(ranges)
