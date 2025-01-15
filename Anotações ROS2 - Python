@@ -1,0 +1,197 @@
+              ROS2 BASICS IN 5 DAYS(PYTHON)
+
+Estrutura basica de comando: ros2 run <package_name> <executable_file> ou ros2 launch <package_name> <launch_file>
+
+O Package eh onde ficara todos os programas, e ele fica dentro do workspaces, pra um projeto diferente devera ser usado outro workspace pra isolar o projeto
+OBS: Sempre que for criar uma package, deve estar dentro do src dentro do workspace, ou seja ros2_ws/src por exemplo
+
+Criando um Package - ros2 pkg create --build-type ament_python <package_name> --dependencies <package_dependency_1> <package_dependency_2> - package name é o nome que vc quer, package dependency é o package que seu package depende e ament_python 
+indica que é um package em python
+
+Colcon build - deve ser executado no workspace antes do src - Deve ser executado pois o workspace foi criado, compila tudo do src
+Apos o colcon build deve-se usar source install/setup.bash para atualizar o ambiente do terminal e o sistema reconhecer os pacotes
+Para projetos grandes usar colcon build --packages-select <package_name> - para não precisar baixar tudo do src - exemplo: colcon build --packages-select mars_rover_systems
+
+ros2 pkg list - todos os packages listados, da pra filtrar com | grep <nome do package>
+
+Exemplo de codigo do curso: 
+
+#!/usr/bin/env python  - localiza a instalação python no sistema
+import rclpy
+
+def main(args=None):
+    # initialize the ROS communication
+    rclpy.init(args=args) - comando obrigatorio em ROS que configura o ambiente necessário para o script interagir com o ROS 
+    # print a message to the terminal
+    print("Mars rover 1 is alive...")
+    # shutdown the ROS communication
+    rclpy.shutdown() - finaliza a interação
+
+if __name__ == '__main__':       - significa que o script está sendo executado diretamente, e não importado como um módulo em outro programa, tontando verdadeiro e o def main eh executado
+    main() #call the main function
+
+OBS IMPORTANTE: no curso, o setup.py foi modificado para exercutar o python file com ros2, nao sei se eh algo que sempre tera que ser feito ou não, assim, o codigo pode ser rodado com : ros2 run <name_of_the_package> <entry_point_name> ou seja
+ros2 run mars_rover_systems heartbeat_executable
+
+              NODE BASICS
+exemplo:
+#!/usr/bin/env python
+
+import rclpy
+import time
+from rclpy.node import Node
+
+def main(args=None):
+    # initialize the ROS communication
+    rclpy.init(args=args)
+    
+    # Create a node
+    node = Node('mars_rover_1')              - Iniciando um ROS2 node com o nome mars_rover_1
+
+    i = 0
+    max_i = 50
+    while i < max_i:
+        i += 1
+        ros_time_stamp = node.get_clock().now()   - pega o tempo de todo o sistema ROS2
+        # print a message to the terminal
+        node.get_logger().info(str(i)+":Mars rover 1 is alive..."+str(ros_time_stamp))   - o print do node é com esse log , ode.get_logger() é um método que retorna o logger associado ao nó e info() é um método desse logger 
+
+        # Wait for 1 second
+        time.sleep(1)   
+    
+    # shutdown the ROS communication
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()  # Call the main function
+
+              LAUNCH
+Basicamente serve para rodar mais de um node simultaneamente, se cria uma pasta lauch dentro da pasta que esta salvo sua area de trabalho(ex: ros2_ws/src/mars_rover_systems) e \dentro cria um arquivo .py que executara o lauch juntando os nodes
+exemplo de codigo interno do .py do lauch : 
+
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package='mars_rover_systems',
+            executable='heartbeat_executable',
+            output='screen'),
+        Node(
+            package='mars_rover_systems',
+            executable='heartbeat_executable2',
+            output='screen')
+    ])
+
+Explicação: 
+package=The name of the package that contains the ROS2 program to execute.
+executable=The name of the Python entry point defined in the setup.py.
+output=The type of output channel for printing the program's output.
+Observação: Deve-se editar tambem o setup.py para achar o .launch.py files
+
+                    TOPIC IN ROS
+
+ros2 topic list | grep cmd_vel - lista os topicos e filtra para cmd_vel
+ros2 topic info /cmd_vel - diz o tipo de interface associada ao topico em questão, quantos nodes publicam dados nesse topico e número de nós ativos que leem dados desse tópico
+ros2 interface show sensor_msgs/msg/LaserScan - mostra a estrutura do laserscan 
+ros2 topic echo /laser_scan --field ranges - serve para mostrar (printar) apenas o ranges field, ao executar mostrara as distancias(ranges)
+
+                EXEMPLO PRATICO TOPIC (Mars Rover Camera)
+
+ros2 run rqt_image_view rqt_image_view /leo/camera/image_raw - output seria a camera do proprio robo, a visão dela
+obs:utiliza o ROS 2 para executar o executável rqt_image_view, localizado no pacote de mesmo nome, que fornece uma 
+interface gráfica para visualizar imagens publicadas em tópicos. O tópico /leo/camera/image_raw especifica o fluxo de dados de imagem bruta capturado pela câmera do robô "leo".
+
+ros2 topic info /leo/camera/image_raw - diz o tipo de interface associada ao topico em questão, quantos nodes publicam dados nesse topico e número de nós ativos que leem dados desse tópico
+
+ros2 interface show sensor_msgs/msg/Image - informa detalhes tecnicos gerados, nesse caso, das imagens fornecidas pela camera (esse sensor_msgs/msg/image(interface name)
+foi o output gerado pelo topic info)
+
+ros2 topic echo /leo/camera/image_raw --field data -  contém os dados brutos da imagem capturada(valores de pixels das imagens geradas por exemplo)
+
+ros2 interface proto <package_name>/msg/<interface_name> - mostra um exemplo da interface que pode ser utilizada
+
+        PUBLICANDO MENSAGEM EM UM TOPICO
+
+ros2 topic pub <topic_name> <interface_name> <message>
+Obs: Se o pub for uma execucao de giro por exemplo, pode-se imprimir o echo em outro terminal e ver a variação em tempo real, com o ros2 topic echo <topico>
+
+Resumo: Ao saber o topic, usa topic info e pega a interface gerada e usa interface show pra ver os detalhes e interface foto pra ver exemplo de utilização, apos isso pra publicar algo
+eh so usar o ros2 topic pub com o nome do topico, a interface(mesma usada no interface show) e a mensagem como o exemplo adquirido no interface photo
+
+Importante: sempre que algo for publicado ou baixado temq atualizar o sistema com source /opt/ros/humble/setup.bash
+
+      MAIS SOBRE TOPIC  
+ros2 topic info /cmd_vel --verbose - lista um monte de coisa, os publishers e subscribers, tipo de topico e muitas outras coisas vistos nos codigos anteriores
+Obs: no exemplo do curso, o ros2 topic echo causou no os subscribers e o ros2 topic pub causou o publishing
+
+      DEFINE A TOPIC
+.Apos criar o package e o launch, foi criado dentro do folder que terão os executaveis, nesse caso o  mars_rover_tasks , um file.py, porem, tem que transformar esse file em um executavel dentro 
+do setup.py, segue exemplo abaixo:
+
+file dentro do mars_rover_tasks:
+
+import rclpy
+from rclpy.node import Node
+
+class ObstacleDetectorNode(Node):
+    def __init__(self):
+        super().__init__('obstacle_detector_node')
+        self.get_logger().info('ObstacleDetectorNode has started.')
+        # Aqui você pode adicionar código para terminar o nó
+        rclpy.shutdown()
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = ObstacleDetectorNode()
+    rclpy.spin(node)
+
+if __name__ == '__main__':
+    main()
+
+obs: esse file tem um ros2 node chamado ObstacleDetectorNode
+
+Após a criação desse file tem q ir no setup.py e adcicionar oque foi feito como executavel, ou seja ,segue exemplo abaixo de parte do codigo do setup.py:
+
+entry_points={
+        'console_scripts': [
+            'subscriber_obstacle_detector_executable = mars_rover_tasks.subscriber_obstacle_detector:main',  - mars_rover_tasks é a pasta e o subscriber_obstacle_detector é o file - chama função main
+        ],
+    },
+
+
+              Subscriber Node
+no final do codigo tem QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)) - garantindo qualidade ao codigo
+
+quando executa ros2 topic info /laser_scan -v - vc tem o output do topic /laser_scan, nele mostra q o reliability é reliable, por isso coloca isso no qosprofile
+
+            Publisher Node
+exemplo:
+
+class MoveRoverNode(Node):
+
+    def __init__(self):
+        # Here you have the class constructor
+        # call super() in the constructor to initialize the Node object
+        # the parameter you pass is the node name
+        super().__init__('move_rover_node')
+        # create the publisher object
+        # in this case, the publisher will publish on /cmd_vel Topic with a queue size of 10 messages.
+        # use the Twist module for /cmd_vel Topic
+        self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
+
+explicação:
+
+We create a custom node named MoveRoverNode.
+We use the create_publisher() method.
+It has this following inputs:
+topic message type: In this case Twist.
+topic name: in this case /cmd_vel.
+queue size for the publisher in ROS 2 : In this case its 10. This means that up to 10 messages can be buffered in the queue of the topic. If a subscriber can't keep up 
+with the publishing rate, the 11th message will cause the first message to be dropped, and so on.
+
+
+
+
