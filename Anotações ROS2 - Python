@@ -1,4 +1,4 @@
-              ROS2 BASICS IN 5 DAYS(PYTHON)
+             * ROS2 BASICS IN 5 DAYS(PYTHON)*
 
 Estrutura basica de comando: ros2 run <package_name> <executable_file> ou ros2 launch <package_name> <launch_file>
 
@@ -33,7 +33,7 @@ if __name__ == '__main__':       - significa que o script está sendo executado 
 OBS IMPORTANTE: no curso, o setup.py foi modificado para exercutar o python file com ros2, nao sei se eh algo que sempre tera que ser feito ou não, assim, o codigo pode ser rodado com : ros2 run <name_of_the_package> <entry_point_name> ou seja
 ros2 run mars_rover_systems heartbeat_executable
 
-              NODE BASICS
+             * NODE BASICS*
 exemplo:
 #!/usr/bin/env python
 
@@ -66,7 +66,7 @@ def main(args=None):
 if __name__ == '__main__':
     main()  # Call the main function
 
-              LAUNCH
+              *LAUNCH*
 Basicamente serve para rodar mais de um node simultaneamente, se cria uma pasta lauch dentro da pasta que esta salvo sua area de trabalho(ex: ros2_ws/src/mars_rover_systems) e \dentro cria um arquivo .py que executara o lauch juntando os nodes
 exemplo de codigo interno do .py do lauch : 
 
@@ -91,14 +91,14 @@ executable=The name of the Python entry point defined in the setup.py.
 output=The type of output channel for printing the program's output.
 Observação: Deve-se editar tambem o setup.py para achar o .launch.py files
 
-                    TOPIC IN ROS
+                    *TOPIC IN ROS*
 
 ros2 topic list | grep cmd_vel - lista os topicos e filtra para cmd_vel
 ros2 topic info /cmd_vel - diz o tipo de interface associada ao topico em questão, quantos nodes publicam dados nesse topico e número de nós ativos que leem dados desse tópico
 ros2 interface show sensor_msgs/msg/LaserScan - mostra a estrutura do laserscan 
 ros2 topic echo /laser_scan --field ranges - serve para mostrar (printar) apenas o ranges field, ao executar mostrara as distancias(ranges)
 
-                EXEMPLO PRATICO TOPIC (Mars Rover Camera)
+                *EXEMPLO PRATICO TOPIC (Mars Rover Camera)*
 
 ros2 run rqt_image_view rqt_image_view /leo/camera/image_raw - output seria a camera do proprio robo, a visão dela
 obs:utiliza o ROS 2 para executar o executável rqt_image_view, localizado no pacote de mesmo nome, que fornece uma 
@@ -113,7 +113,7 @@ ros2 topic echo /leo/camera/image_raw --field data -  contém os dados brutos da
 
 ros2 interface proto <package_name>/msg/<interface_name> - mostra um exemplo da interface que pode ser utilizada
 
-        PUBLICANDO MENSAGEM EM UM TOPICO
+        *PUBLICANDO MENSAGEM EM UM TOPICO*
 
 ros2 topic pub <topic_name> <interface_name> <message>
 Obs: Se o pub for uma execucao de giro por exemplo, pode-se imprimir o echo em outro terminal e ver a variação em tempo real, com o ros2 topic echo <topico>
@@ -123,11 +123,11 @@ eh so usar o ros2 topic pub com o nome do topico, a interface(mesma usada no int
 
 Importante: sempre que algo for publicado ou baixado temq atualizar o sistema com source /opt/ros/humble/setup.bash
 
-      MAIS SOBRE TOPIC  
+     * MAIS SOBRE TOPIC * 
 ros2 topic info /cmd_vel --verbose - lista um monte de coisa, os publishers e subscribers, tipo de topico e muitas outras coisas vistos nos codigos anteriores
 Obs: no exemplo do curso, o ros2 topic echo causou no os subscribers e o ros2 topic pub causou o publishing
 
-      DEFINE A TOPIC
+     * DEFINE A TOPIC*
 .Apos criar o package e o launch, foi criado dentro do folder que terão os executaveis, nesse caso o  mars_rover_tasks , um file.py, porem, tem que transformar esse file em um executavel dentro 
 do setup.py, segue exemplo abaixo:
 
@@ -162,12 +162,12 @@ entry_points={
     },
 
 
-              Subscriber Node
+              *Subscriber Node*
 no final do codigo tem QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)) - garantindo qualidade ao codigo
 
 quando executa ros2 topic info /laser_scan -v - vc tem o output do topic /laser_scan, nele mostra q o reliability é reliable, por isso coloca isso no qosprofile
 
-            Publisher Node
+           * Publisher Node*
 exemplo:
 
 class MoveRoverNode(Node):
@@ -192,6 +192,36 @@ topic name: in this case /cmd_vel.
 queue size for the publisher in ROS 2 : In this case its 10. This means that up to 10 messages can be buffered in the queue of the topic. If a subscriber can't keep up 
 with the publishing rate, the 11th message will cause the first message to be dropped, and so on.
 
+     * MAIS SOBRE SUBSCRIPTION E PUBLISHER*
+Exemplo de subscription para entender:
+
+self.subscription = self.create_subscription(
+    Image,
+    '/leo/camera/image_raw',
+    self.image_callback,
+    10)
+
+Explicação:  
+
+Aqui, você está criando um subscription para o tópico /leo/camera/image_raw, que transmite mensagens do tipo Image. Sempre que uma nova mensagem for publicada neste tópico, 
+o método self.image_callback será chamado para processá-la(O subscription é usado para receber imagens da câmera).
+
+            *CUSTOM INTERFACE*
+Basicamente, para criar uma interface eh no estilo package igual antes porem n em python , exemplo:
+ros2 pkg create --build-type ament_cmake custom_interfaces --dependencies rclcpp std_msgs geometry_msgs
+Apos isso usou dentro do custom_interfaces: 
+mkdir msg
+touch msg/RoverEvents.msg
+
+Observação: foi dado tanto codigo em .msg tanto .sml e .txt para execução
+
+Apos tudo isso:
+1-executa-se no terminal <ros2 interface show custom_interfaces/msg/RoverEvents> para ver se foi criado a interface
+2-Importa igual uma biblioteca sua interface a ser usada no seu codigo python - <from custom_interfaces.msg import RoverEvents>
+
+
+*Duvida: ficou meio confuso no curso em si se fica mexendo nos .txt, .msg e .xml diariamente, sei que o setup.py pra transformar em executavel usa mas so edita um pouco?ele gera automatico ? 
+so devo me preocupar com a preocupação em .py do robo em si ?
 
 
 
