@@ -222,6 +222,22 @@ Apos tudo isso:
 
 *Duvida: ficou meio confuso no curso em si se fica mexendo nos .txt, .msg e .xml diariamente, sei que o setup.py pra transformar em executavel usa mas so edita um pouco?ele gera automatico ? 
 so devo me preocupar com a preocupação em .py do robo em si ?
+(ENSINOU TOPIC E SERVICE)
+
+            *CALLBACK FUNCTIONS*
+EVENTS basicamente faz executar funções com certas condições, podendo ser informação de sensores, tempo e etc
+exemplo:
+
+self.create_timer(self.timer_period, self.timer_counter)
+        self.create_timer(self.main_task_period, self.main_task)
+
+Nesse caso, o self.timer_counter e o main_task são duas funções transformadas em callback que dependem da variavel de tempo que antecede a "virgula" e foi declarada antes no codigo
+obs: callback parece ser imediato porem eh bom em ros aumentar o tempo de processamento de espera de determinadas ações
+
+aparenemente o callback so pode ser usado um de cada vez, isso eh um problema pois por exemplo a camera de um robo mostraria sua imagem porem nao mudaria em tempo real
+
+usa-se spin_once para executar um callback de cada vez e assim é útil para controle explícito
+
 
 
 
