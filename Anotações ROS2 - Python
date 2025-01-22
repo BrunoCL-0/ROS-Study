@@ -238,6 +238,88 @@ aparenemente o callback so pode ser usado um de cada vez, isso eh um problema po
 
 usa-se spin_once para executar um callback de cada vez e assim é útil para controle explícito
 
+            *MULTITHREADED EXECUTORS*
+
+Serve para executar mais de um callback simultaneamente, ele eh adicionado na função main, ou seja:
+antes:
+# REST OF THE CODE
+
+def main(args=None):
+    rclpy.init(args=args)
+    plant_detector_node = PlantDetectorNode()
+    rclpy.spin(plant_detector_node)
+    plant_detector_node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+
+depois:
+from rclpy.executors import MultiThreadedExecutor
+
+# REST OF THE CODE IS IDENTICAL
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    plant_detector_node = PlantDetectorNode()
+    
+    # Use MultiThreadedExecutor
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(plant_detector_node)
+    
+    try:
+        executor.spin()
+    finally:
+        plant_detector_node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+
+            *REENTRANTCALLBACKGROUP*
+
+Basicamente os callbacks do mesmo grupo podem ser executados simultaneamente 
+exemplo:
+
+from rclpy.callback_groups import ReentrantCallbackGroup
+...
+self.reentrant_group_1 = ReentrantCallbackGroup()
+...
+self.subscription = self.create_subscription(
+            Image,
+            self._image_topic_name,
+            self.listener_callback,
+            10,
+            callback_group=self.reentrant_group_1)
+
+# Create the service for plant detection
+self.srv = self.create_service(Trigger, 'detect_plants', self.detect_plants_callback, callback_group=self.reentrant_group_1)
+
+            *MUTUALLYEXCLUSIVECALLBACKGROUP*
+Basicamente somente um callback pode funcionar por vez e os demais sao bloqueados enquanto isso
+exemplo(nesse caso usou calbbacks groups diferentes para poderem ser executados simultaneamente):
+
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+...
+self.mutuallyexclusive_group_1 = MutuallyExclusiveCallbackGroup()
+self.mutuallyexclusive_group_2 = MutuallyExclusiveCallbackGroup()
+...
+self.subscription = self.create_subscription(
+            Image,
+            self._image_topic_name,
+            self.listener_callback,
+            10,
+            callback_group=self.mutuallyexclusive_group_1)
+
+# Create the service for plant detection
+self.srv = self.create_service(Trigger, 'detect_plants', self.detect_plants_callback, callback_group=self.mutuallyexclusive_group_2)
+
+Mutualmente Exclusivo ou Reentrante?Depende das preferências e necessidades do seu nó.
+Se suas funções de callback não compartilham recursos como entradas de sensores ou variáveis, use ReentrantCallbackGroups.
+Se você deseja limitar o acesso a recursos compartilhados, MutuallyExclusiveCallbackGroups são a escolha ideal.
+
+
 
 
 
