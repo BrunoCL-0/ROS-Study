@@ -319,6 +319,105 @@ Mutualmente Exclusivo ou Reentrante?Depende das preferências e necessidades do 
 Se suas funções de callback não compartilham recursos como entradas de sensores ou variáveis, use ReentrantCallbackGroups.
 Se você deseja limitar o acesso a recursos compartilhados, MutuallyExclusiveCallbackGroups são a escolha ideal.
 
+            *ACTION IN ROS2*
+
+Basicamente eh chamado parecido com o service, pode cancelar um action enquanto esta sendo executado e enquanto action estiver sendo executado manda feedback pro cliente
+OBS: O nó que fornece a funcionalidade Action deve conter um Action Server. O Action Server permite que outros nós chamem essa funcionalidade de Action.
+O nó que chama a funcionalidade Action deve conter um Action Client. O Action Client permite que um nó se conecte ao Action Server de outro nó.
+
+Apos executar um comando ros2 enquando ele esta sendo executados se usar ros2 action list aparece a execução e nome dela , apos isso
+usar ros2 action info </rotate(nome da execução exemplo)> aparece na ultima linha esse formato - <pkg_name>/action/<interface_name> - se quiser por isso no interface show da certo
+
+Chamando um action:
+ros2 action send_goal <action_name> <action_type> <values>
+exemplo pratico passo a passo:
+1-ros2 run leo_description rotate_action_server.py
+2-ros2 action list( terminal 2)
+3-ros2 action info /rotate -t(rotate foi output do 2)
+4-ros2 interface show leo_description/action/Rotate ( leo... output do 3)
+5- ros2 action send_goal /rotate leo_description/action/Rotate "{rotation_time: 5.0}"  - output sera nos 2 terminais , se botar um <-f> no final do codigo ele lhe dara os feedbacks\
+
+obs: if you check the leo_description package, you will see that it contains a directory called action. Inside that action directory, there is a file called Rotate.action.
+That is the file specifying the type of message the action uses.
+
+obs:The following is a self-explanatory example of how to implement an action client that calls the rotate Action Server and makes it rotate for five seconds.
+
+obs: A mensagem de um action eh dividido em 3 partes: goal,result e feedback , exemplo: ROTATION_TIME , SUCCESS E ELAPSED_TIME respectivamente
+
+exemplo de codigo action.py: 
+
+import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from leo_description.action import Rotate
+
+
+class MyActionClient(Node):
+
+    def __init__(self):
+        super().__init__('my_action_client')
+        self._action_client = ActionClient(self, Rotate, 'rotate')
+
+    def send_goal(self, seconds):
+        goal_msg = Rotate.Goal()
+        goal_msg.rotation_time = seconds
+
+        self._action_client.wait_for_server()
+        self._send_goal_future = self._action_client.send_goal_async(
+            goal_msg, feedback_callback=self.feedback_callback)
+
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
+            return
+
+        self.get_logger().info('Goal accepted :)')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        self.get_logger().info('Result: {0}'.format(result.success))
+        rclpy.shutdown()
+
+    def feedback_callback(self, feedback_msg):
+        feedback = feedback_msg.feedback
+        self.get_logger().info(
+           'Received feedback: {0}'.format(feedback.elapsed_time))
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    action_client = MyActionClient()
+
+    action_client.send_goal(5.0)
+
+    rclpy.spin(action_client)
+
+
+if __name__ == '__main__':
+    main()
+
+explicação do codigo: 
+
+Construtor -
+The ROS2 node that contains the Action Client: in this case, self.
+The type of the Action: Rotate (related to the leo_description interface of type Action).
+The Action name: rotate.
+
+def send_goal:
+Start by creating a Goal() object of the Rotate action type. Then, access the rotation_time variable of the Action goal and assign it the value of seconds (which is five in this example).
+And send the goal to the Server using the send_goal_async method
+obs:This send_goal_async() method returns a future to a goal handle. This future goal handle will be completed when the Server has processed the goal. (This means it has been accepted or 
+rejected by the Server). So, you must assign a callback method to be triggered when the future is completed (the goal has been accepted or rejected). In this case, 
+\this method is self.goal_response_callback:
+
+
 
 
 
