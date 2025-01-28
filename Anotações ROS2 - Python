@@ -610,6 +610,12 @@ adicionando dependencias, exemplo:
 member of group: 
 <member_of_group>rosidl_interface_packages</member_of_group>
 
+executar - cd workspace, colcon build, source install e ros2 interface show <custom_interfaces/action/GoToPose>
+
+
+
+
+
 
 
 
