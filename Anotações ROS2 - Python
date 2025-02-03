@@ -612,8 +612,21 @@ member of group:
 
 executar - cd workspace, colcon build, source install e ros2 interface show <custom_interfaces/action/GoToPose>
 
+            *Rviz2*
+
+Eh so executar rviz no terminal que imediatamente sera carrgeado a interface do rviz, ao lado esquerdo sao as configurações e no centro eh o sistema de operação que funciona como uma 
+especie de simulação
+
+            *tf2_tools view_frames*
+comando - ros2 run tf2_tools view_frames - vai disponibilizar um pdf que tera um driagrama de cp,p a estrutura logica da programação esta sendo realizada
+
+            *ros2 doctor*
+Basicamente ao executar esse comando ele vai listar o setup completo do ros2, ele eh bom pra ver qual erro esta em processamento. 
+Ou seja: supondo que coloque o robo pra rodar, o codigo eh executado porem o robo n executa o movimento, com esse comando saberia aonde esta sendo o erro, se estiver tudo certo na ultima linha
+do output ira aparecer a mensagem "All 5 checks passed"
 
 
+ros2 doctor --report - o output sai bem detalhado em topicos
 
 
 
