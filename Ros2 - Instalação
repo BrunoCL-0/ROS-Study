@@ -1,0 +1,29 @@
+		PASSO A PASSO
+		
+*Instalação ROS2*
+
+https://www.youtube.com/watch?v=0aPbWsyENA8&list=PLLSegLrePWgJudpPUof4-nVFHGkB62Izy
+
+Obs: lembrar que ao abrir um novo terminal deve-se realizar o source novamente para ter aceso aos comandos em ros2 - source /opt/ros/humble/setup.bash
+
+Aviso: para evitar executar reptidas vezes esse comando, pode-se fazer o seguinte:
+.Executar no terminal : <gedit ~/.bashrc> - dessa forma vai abrir um codigo que eh sempre executado ao abrir um novo terminal, ou seja, se adicionar na ultima linha o source mencionado 
+anteriormente esse problema sera evitado.
+
+Dica: comando <rqt_graph> basicamente ele abre uma interface que mostra os nodes e topics em atividade naquele momento em forma de diagrama 
+
+*Criando seu workspace*
+
+https://www.youtube.com/watch?v=3GbrKQ7G2P0&list=PLLSegLrePWgJudpPUof4-nVFHGkB62Izy&index=3
+
+.Adicionou no gedit .bashrc mais duas linhas de codigo no final:
+source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash - esse comando basicamente vai adicionar a função colcon automaticamente, podendo realizar colcon build, list e etc
+source ~/ros2_ws/install/setup.bash - para reconhecer seu pacote workspace
+
+*Codigo base de ros*
+
+https://www.youtube.com/watch?v=wfCuPQ_6VbI&list=PLLSegLrePWgJudpPUof4-nVFHGkB62Izy&index=5
+
+*Topic*
+
+https://www.youtube.com/watch?v=Yy4OgGwEAj8
