@@ -56,3 +56,37 @@ int main(int argc, char **argv) {
     
   return 0;
 }
+
+    *constructor em c++*
+
+mesma logica vista em python , exemplo de codigo:
+#include <iostream>
+#include <string>
+using namespace std;
+
+class Hobbit {
+    public:
+    
+       Hobbit(string a,float b,int c) {
+           name = a;
+           height = b;
+           age = c;
+       } //constructor
+    
+       string name;
+       float height; //in meters
+       int age;
+    
+       void get_name() {
+           cout << "This hobbit's name is " << name << endl;
+       }
+       void convert_height_to_cm();
+};
+
+int main() {
+    
+    Hobbit first_hobbit("Frodo",1.15,28);
+    
+    Hobbit second_hobbit("Sam",1.26,31);
+}
+
