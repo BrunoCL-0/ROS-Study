@@ -1,0 +1,19 @@
+  *ROS2 Basics in 5 days C++ *
+
+Alguns comandos obvios nao serão postos nesse resumo, pois, antes foi feito curso de ros2 em pyhon, que eh semelhante.
+launch folder: Contains launch files
+src folder: Contains source files (CPP, Python)
+CMakeLists.txt: List of Cmake rules for compilation
+package.xml: Package metadata and dependencies
+
+    *First package*
+dentro do src do workskpace:
+ros2 pkg create <package_name> --build-type ament_cmake --dependencies <package_dependencies> 
+ros2 pkg create my_package --build-type ament_cmake --dependencies rclcpp  (exemplo)
+
+depois colcon build no ws ou colcon build --packages-select <package_name>
+e source install/setup.bash
+
+  *launch*
+
+ao criar um file em python dentro do launch tem que ser <.launch.py> , exemplo: touch my_package_launch_file.launch.py 
