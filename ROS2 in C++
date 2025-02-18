@@ -17,3 +17,94 @@ e source install/setup.bash
   *launch*
 
 ao criar um file em python dentro do launch tem que ser <.launch.py> , exemplo: touch my_package_launch_file.launch.py 
+
+ao executar <ros2 launch my_package my_package_launch_file.launch.py> estamos pegando o py dentro do launch dentro do my_package , então, dentro do my_package eh onde o launch esta 
+
+*exemplo de codigo .cpp dentro do src dentro do folder:
+
+#include "rclcpp/rclcpp.hpp"
+
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  auto node = rclcpp::Node::make_shared("ObiWan");
+  // We create a Rate object of 2Hz
+  rclcpp::WallRate loop_rate(2);
+
+  // Endless loop until Ctrl + C
+  while (rclcpp::ok()) {
+
+    RCLCPP_INFO(node->get_logger(), "Help me Obi-Wan Kenobi, you're my only hope");
+    rclcpp::spin_some(node);
+    // We sleep the needed time to maintain the Rate fixed above
+    loop_rate.sleep();
+        
+  }
+  rclcpp::shutdown();
+  return 0;
+}
+// This program creates an endless loop that repeats itself 2 times per second (2Hz) until somebody presses Ctrl + C
+// in the Shell
+
+*exemplo  do cmakelist dentro do src dentro do folder:
+
+cmake_minimum_required(VERSION 3.8)
+project(my_package)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # uncomment the line when a copyright and license is not present in all source files
+  #set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+add_executable(simple_node src/simple.cpp)
+ament_target_dependencies(simple_node rclcpp)
+
+install(TARGETS
+   simple_node
+   DESTINATION lib/${PROJECT_NAME}
+ )
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+ament_package()
+
+*Arquivo.py dentro do launch :
+
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package='my_package',
+            executable='simple_node',
+            output='screen'),
+    ])
+
+          *RESUMO ESSECENCIAL*
+
+Estrutura de pastas - Workspace > src > Pasta1(com dependendcia em c++) > src e launch (src - codigos C++ / launch - codigo .launch.py) obs: dentro da pasta dependente criada antes, alem do src e launch 
+tem cmake.txt e package.xml , o .txt deve ser alterado adicionando o executavel para rodar o codigo 
+
+Após executar o launch , um topico foi ativado, se der ros2 topic list | grep '/counter' , vemos que esse foi o topico de exemplo que foi ativado.
+ros2 topic info /counter vai dizer quantos publishers e subscriptions foram ativados nesse topic
+e ros2 topic echo /counter vai mostrar o output em tempo real doq ta rolando 
+
+ 
