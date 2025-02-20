@@ -470,3 +470,159 @@ install(DIRECTORY
 
 ament_package()
 
+     *Executor*
+
+adicionar ao codigo:
+rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(node);
+  executor.spin();
+
+  rclcpp::shutdown();
+
+é o mesmo que adicionar um executor, eh util quando for rodar mais de um no e usar spin() diretamente no nó (rclcpp::spin(node)) ainda funciona, mas o executor dá mais controle e flexibilidade, alem de,
+com essa ferramenta, pode executar callbacks e nodes simultaneamente 
+
+
+    *Types of executors*
+
+The Single-threaded Executor uses one thread to execute all the Node instructions.
+
+The Multi-threaded Executor creates a variable number of threads that allow multiple messages/events to process in parallel.
+
+The Static Single-threaded Executor performs a Node scan only once when the Node is added to the Executor. Therefore, use it only with Nodes that create all related Callbacks during initialization.
+
+obs:Um detalhe importante eh saber que dentro do () do executor eh uma instancia do no,
+ou seja, uma variavel que armazena o valor do no.
+
+    *The Single-threaded Executor*
+
+A seguir segue exemplo de codigo com esse executor, ele puxa dois nos ao mesmo tempo para funcionarem simultaneamente. Porem isso n funciona pois ele su possui uma thread
+
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <unistd.h>
+
+using namespace std::chrono_literals;
+
+class OdomSubscriber : public rclcpp::Node {
+public:
+  OdomSubscriber(std::string odom_topic_name) : Node("odom_subscriber") {
+
+    subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        odom_topic_name, 10,
+        std::bind(&OdomSubscriber::topic_callback, this,
+                  std::placeholders::_1));
+  }
+
+private:
+  void topic_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    RCLCPP_INFO(this->get_logger(), "Odometry=['%f','%f','%f']",
+                msg->pose.pose.position.x, msg->pose.pose.position.y,
+                msg->pose.pose.position.z);
+  }
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subscription_;
+};
+
+class SlowTimer : public rclcpp::Node {
+public:
+  SlowTimer(float sleep_timer) : Node("slow_timer_subscriber") {
+    this->wait_time = sleep_timer;
+    timer_ = this->create_wall_timer(
+        500ms, std::bind(&SlowTimer::timer_callback, this));
+  }
+
+private:
+  void timer_callback() {
+    sleep(this->wait_time);
+    RCLCPP_INFO(this->get_logger(), "TICK");
+  }
+  rclcpp::TimerBase::SharedPtr timer_;
+  float wait_time;
+};
+
+int main(int argc, char *argv[]) {
+  rclcpp::init(argc, argv);
+
+  // Instantiate the odometry subscriber node
+  std::shared_ptr<OdomSubscriber> odom_subs_node =
+      std::make_shared<OdomSubscriber>("/box_bot_1/odom");
+
+  // Instantiate the timer node node
+  float sleep_time = 3.0;
+  std::shared_ptr<SlowTimer> slow_timer_node =
+      std::make_shared<SlowTimer>(sleep_time);
+
+  RCLCPP_INFO(odom_subs_node->get_logger(), "odom_subs_node INFO...");
+  RCLCPP_INFO(slow_timer_node->get_logger(), "slow_timer_node INFO...");
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+    
+  // Add the odometry subscriber node to the executor
+  executor.add_node(odom_subs_node);
+  // Add the timer node to the executor
+  executor.add_node(slow_timer_node);
+  executor.spin();
+
+  rclcpp::shutdown();
+  return 0;
+}
+
+
+         *Multi-Threaded Executor running two Nodes*
+nesse exmplo a seguir os callbacks nao interferem um no outro e são executados simultaneamente:
+
+cmake_minimum_required(VERSION 3.5)
+project(executors_exercises_pkg)
+
+# Default to C99
+if(NOT CMAKE_C_STANDARD)
+  set(CMAKE_C_STANDARD 99)
+endif()
+
+# Default to C++14
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(nav_msgs REQUIRED)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter, which checks for copyrights
+  # uncomment the line when copyright and license are not present in all source files
+  #set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # uncomment the line when this package is not in a git repo
+  #set (ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+# Build 
+add_executable(executor_example_1_node src/executor_example_1.cpp)
+ament_target_dependencies(executor_example_1_node rclcpp)
+
+add_executable(executor_example_2_node src/executor_example_2.cpp)
+ament_target_dependencies(executor_example_2_node rclcpp nav_msgs)
+
+add_executable(executor_example_3_node src/executor_example_3.cpp)
+ament_target_dependencies(executor_example_3_node rclcpp nav_msgs)
+
+add_executable(executor_example_4_node src/executor_example_4.cpp)
+ament_target_dependencies(executor_example_4_node rclcpp nav_msgs)
+
+install(TARGETS
+   executor_example_1_node
+   executor_example_2_node
+   executor_example_3_node
+   executor_example_4_node
+   DESTINATION lib/${PROJECT_NAME}
+ )
+ament_package()
+
