@@ -571,58 +571,281 @@ int main(int argc, char *argv[]) {
          *Multi-Threaded Executor running two Nodes*
 nesse exmplo a seguir os callbacks nao interferem um no outro e são executados simultaneamente:
 
-cmake_minimum_required(VERSION 3.5)
-project(executors_exercises_pkg)
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <unistd.h>
 
-# Default to C99
-if(NOT CMAKE_C_STANDARD)
-  set(CMAKE_C_STANDARD 99)
-endif()
+// For the parameters, templates of seconds or ms
+using namespace std::chrono_literals;
 
-# Default to C++14
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
+class OdomSubscriber : public rclcpp::Node {
+public:
+  OdomSubscriber(std::string odom_topic_name) : Node("odom_subscriber") {
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
+    subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        odom_topic_name, 10,
+        std::bind(&OdomSubscriber::topic_callback, this,
+                  std::placeholders::_1));
+  }
 
-# find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(nav_msgs REQUIRED)
+private:
+  void topic_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
+    RCLCPP_INFO(this->get_logger(), "Odometry=['%f','%f','%f']",
+                msg->pose.pose.position.x, msg->pose.pose.position.y,
+                msg->pose.pose.position.z);
+  }
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr subscription_;
+};
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter, which checks for copyrights
-  # uncomment the line when copyright and license are not present in all source files
-  #set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # uncomment the line when this package is not in a git repo
-  #set (ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+class SlowTimer : public rclcpp::Node {
+public:
+  SlowTimer(float sleep_timer) : Node("slow_timer_subscriber") {
+    this->wait_time = sleep_timer;
+    timer_ = this->create_wall_timer(
+        500ms, std::bind(&SlowTimer::timer_callback, this));
+  }
 
-# Build 
-add_executable(executor_example_1_node src/executor_example_1.cpp)
-ament_target_dependencies(executor_example_1_node rclcpp)
+private:
+  void timer_callback() {
+    sleep(this->wait_time);
+    RCLCPP_INFO(this->get_logger(), "TICK");
+  }
+  rclcpp::TimerBase::SharedPtr timer_;
+  float wait_time;
+};
 
-add_executable(executor_example_2_node src/executor_example_2.cpp)
-ament_target_dependencies(executor_example_2_node rclcpp nav_msgs)
+int main(int argc, char *argv[]) {
+  rclcpp::init(argc, argv);
 
-add_executable(executor_example_3_node src/executor_example_3.cpp)
-ament_target_dependencies(executor_example_3_node rclcpp nav_msgs)
+  // Instantiate the odometry subscriber node
+  std::shared_ptr<OdomSubscriber> odom_subs_node =
+      std::make_shared<OdomSubscriber>("/box_bot_1/odom");
 
-add_executable(executor_example_4_node src/executor_example_4.cpp)
-ament_target_dependencies(executor_example_4_node rclcpp nav_msgs)
+  // Instantiate the timer node node
+  float sleep_time = 3.0;
+  std::shared_ptr<SlowTimer> slow_timer_node =
+      std::make_shared<SlowTimer>(sleep_time);
 
-install(TARGETS
-   executor_example_1_node
-   executor_example_2_node
-   executor_example_3_node
-   executor_example_4_node
-   DESTINATION lib/${PROJECT_NAME}
- )
-ament_package()
+  RCLCPP_INFO(odom_subs_node->get_logger(), "odom_subs_node INFO...");
+  RCLCPP_INFO(slow_timer_node->get_logger(), "slow_timer_node INFO...");
+
+  rclcpp::executors::MultiThreadedExecutor executor;
+
+  // Add the odometry subscriber node to the executor
+  executor.add_node(odom_subs_node);
+  // Add the timer node to the executor
+  executor.add_node(slow_timer_node);
+  executor.spin();
+
+  rclcpp::shutdown();
+  return 0;
+}
+
+Observação: So pode ser executado um executor por codigo, ou seja se vc precisa de dois nos funcionando simultaneamente use o multithreaded executors, se nao seria necessario criar dois programas
+em ros2 com o singlethreadedexecutors.
+
+Observação 2: Mesmo o multithreaded executors não consegue por meio de um no q possui 2 calbbacks executar os 2 , apenas o primeiro callback desse no seria executado, nesse caso deve-se criar 
+callback groups types
+
+
+          *CALLBACK GROUP TYPES*
+
+Reentrante: Todos os Callbacks nesses grupos podem ser executados simultaneamente, sem restrições. O Executor criará quantas threads forem necessárias para isso.
+
+Mutuamente Exclusivo: Todos os Callbacks nesses grupos podem ser executados um de cada vez. Isso é útil para Callbacks que, por algum motivo, afetam o mesmo sistema ou 
+utilizam os mesmos recursos que outros. Além disso, esse tipo de Callback oferece um melhor controle sobre o fluxo de execução dos Callbacks.
+
+        *Reentrant Callback Groups*
+*Aparentemente faz com que os callbacks sejam executados ao mesmo tempo pela mesma intancia de no, exemplo:
+
+#include <rclcpp/rclcpp.hpp>
+#include <unistd.h>
+
+using namespace std::chrono_literals;
+
+class TwoTimer : public rclcpp::Node {
+public:
+  TwoTimer(float sleep_timer1, float sleep_timer2)
+      : Node("slow_timer_subscriber") {
+          
+    // Initialize one Reentrant callback group object
+    callback_group_ =
+        this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
+    this->wait_time1 = sleep_timer1;
+    this->wait_time2 = sleep_timer2;
+
+    timer1_ = this->create_wall_timer(
+        500ms, std::bind(&TwoTimer::timer1_callback, this), callback_group_);
+    timer2_ = this->create_wall_timer(
+        500ms, std::bind(&TwoTimer::timer2_callback, this), callback_group_);
+  }
+
+private:
+  void timer1_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer 1 Callback Start");
+    sleep(this->wait_time1);
+    RCLCPP_INFO(this->get_logger(), "Timer 1 Callback End");
+  }
+
+  void timer2_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer 2 Callback Start");
+    sleep(this->wait_time2);
+    RCLCPP_INFO(this->get_logger(), "Timer 2 Callback End");
+  }
+
+  rclcpp::CallbackGroup::SharedPtr callback_group_;
+  rclcpp::TimerBase::SharedPtr timer1_;
+  rclcpp::TimerBase::SharedPtr timer2_;
+  float wait_time1;
+  float wait_time2;
+};
+
+int main(int argc, char *argv[]) {
+  rclcpp::init(argc, argv);
+
+  // Instantiate the Node
+  float sleep_time1 = 1.0;
+  float sleep_time2 = 3.0;
+  std::shared_ptr<TwoTimer> two_timer_node =
+      std::make_shared<TwoTimer>(sleep_time1, sleep_time2);
+
+  // Initialize one MultiThreadedExecutor object
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(two_timer_node);
+  executor.spin();
+
+  rclcpp::shutdown();
+  return 0;
+}
+
+               *Single MutuallyExclusive Example*
+*Esse aq vai dar aquele erro, ele n vai executar os 2 callbacks simultaneamente pois nao se trata de um reentrant
+
+#include <rclcpp/rclcpp.hpp>
+#include <unistd.h>
+
+using namespace std::chrono_literals;
+
+class TwoTimer : public rclcpp::Node {
+public:
+  TwoTimer(float sleep_timer1, float sleep_timer2)
+      : Node("slow_timer_subscriber") {
+
+    // Initialize one MutuallyExclusive callback group object
+    callback_group_ = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    this->wait_time1 = sleep_timer1;
+    this->wait_time2 = sleep_timer2;
+
+    timer1_ = this->create_wall_timer(
+        500ms, std::bind(&TwoTimer::timer1_callback, this), callback_group_);
+    timer2_ = this->create_wall_timer(
+        500ms, std::bind(&TwoTimer::timer2_callback, this), callback_group_);
+  }
+
+private:
+  void timer1_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer 1 Callback Start");
+    sleep(this->wait_time1);
+    RCLCPP_INFO(this->get_logger(), "Timer 1 Callback End");
+  }
+
+  void timer2_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer 2 Callback Start");
+    sleep(this->wait_time2);
+    RCLCPP_INFO(this->get_logger(), "Timer 2 Callback End");
+  }
+
+  rclcpp::CallbackGroup::SharedPtr callback_group_;
+  rclcpp::TimerBase::SharedPtr timer1_;
+  rclcpp::TimerBase::SharedPtr timer2_;
+  float wait_time1;
+  float wait_time2;
+};
+
+int main(int argc, char *argv[]) {
+
+  rclcpp::init(argc, argv);
+
+  // Instantiate the Node
+  float sleep_time1 = 1.0;
+  float sleep_time2 = 3.0;
+  std::shared_ptr<TwoTimer> two_timer_node =
+      std::make_shared<TwoTimer>(sleep_time1, sleep_time2);
+
+  // Initialize one MultiThreadedExecutor object
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(two_timer_node);
+  executor.spin();
+
+  rclcpp::shutdown();
+  return 0;
+}
+
+       *Multiple MutuallyExclusive Example*
+Aq resolve o problema do anterior pois usou mutuallyexlusive callbacks separados para cada grupo
+#include <rclcpp/rclcpp.hpp>
+#include <unistd.h>
+
+using namespace std::chrono_literals;
+
+class TwoTimer : public rclcpp::Node {
+public:
+  TwoTimer(float sleep_timer1, float sleep_timer2)
+      : Node("slow_timer_subscriber") {
+
+    callback_group_1 = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+    callback_group_2 = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+
+    this->wait_time1 = sleep_timer1;
+    this->wait_time2 = sleep_timer2;
+
+    timer1_ = this->create_wall_timer(
+        500ms, std::bind(&TwoTimer::timer1_callback, this), callback_group_1);
+    timer2_ = this->create_wall_timer(
+        500ms, std::bind(&TwoTimer::timer2_callback, this), callback_group_2);
+  }
+
+private:
+  void timer1_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer 1 Callback Start");
+    sleep(this->wait_time1);
+    RCLCPP_INFO(this->get_logger(), "Timer 1 Callback End");
+  }
+
+  void timer2_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer 2 Callback Start");
+    sleep(this->wait_time2);
+    RCLCPP_INFO(this->get_logger(), "Timer 2 Callback End");
+  }
+
+  rclcpp::CallbackGroup::SharedPtr callback_group_1;
+  rclcpp::CallbackGroup::SharedPtr callback_group_2;
+  rclcpp::TimerBase::SharedPtr timer1_;
+  rclcpp::TimerBase::SharedPtr timer2_;
+  float wait_time1;
+  float wait_time2;
+};
+
+int main(int argc, char *argv[]) {
+  rclcpp::init(argc, argv);
+
+  // Instantiate the Node
+  float sleep_time1 = 1.0;
+  float sleep_time2 = 3.0;
+  std::shared_ptr<TwoTimer> two_timer_node =
+      std::make_shared<TwoTimer>(sleep_time1, sleep_time2);
+
+  // Initialize one MultiThreadedExecutor object
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(two_timer_node);
+  executor.spin();
+
+  rclcpp::shutdown();
+  return 0;
+}
 
