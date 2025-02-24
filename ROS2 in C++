@@ -849,3 +849,9 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+   *SERVICES*
+ros2 service list - lista os services que possui
+ros2 service call <service_name> <service_type> <value> - pra realmente chamar um comando service, como pode ver tem um service type, pra isso vc tem q executar outro comando pra saber o type
+ros2 service type <service q tem no service list> - ai com o output pode usar o service call
+
+
