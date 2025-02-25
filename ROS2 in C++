@@ -854,4 +854,182 @@ ros2 service list - lista os services que possui
 ros2 service call <service_name> <service_type> <value> - pra realmente chamar um comando service, como pode ver tem um service type, pra isso vc tem q executar outro comando pra saber o type
 ros2 service type <service q tem no service list> - ai com o output pode usar o service call
 
+*no codigo abaixo, n foi necessario usar service call, pois, dentro do codigo ja ocorreu toda a logica de chamar o service e criar um client:
+
+#include "rclcpp/rclcpp.hpp"
+#include "std_srvs/srv/empty.hpp"
+
+#include <chrono>
+#include <cstdlib>
+#include <memory>
+
+using namespace std::chrono_literals;
+
+int main(int argc, char **argv)
+{
+  rclcpp::init(argc, argv);
+
+  std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("service_client");
+  rclcpp::Client<std_srvs::srv::Empty>::SharedPtr client =
+    node->create_client<std_srvs::srv::Empty>("moving");
+
+  auto request = std::make_shared<std_srvs::srv::Empty::Request>();
+
+  while (!client->wait_for_service(1s)) {
+    if (!rclcpp::ok()) {
+      RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+      return 0;
+    }
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+  }
+
+  auto result_future = client->async_send_request(request);
+  // Wait for the result.
+  if (rclcpp::spin_until_future_complete(node, result_future) ==
+    rclcpp::FutureReturnCode::SUCCESS)
+  {
+    auto result = result_future.get();
+    RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "The robot is moving");
+  } else {
+    RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service /moving");
+  }
+
+  rclcpp::shutdown();
+  return 0;
+}
+
+
+    *CUSTOM SERVICE INTERFACE*
+
+Dentro do pacote /src/custom_interfaces cria um mkdir srv e dentro dele um touch example.srv, la vc bota a interface desejada e edita o cmake e o .xml
+.dentro do cmake . apos o endif:
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/example.srv"
+)
+
+.xml:
+<build_depend>rosidl_default_generators</build_depend>
+
+<exec_depend>rosidl_default_runtime</exec_depend>
+
+<member_of_group>rosidl_interface_packages</member_of_group>
+
+.Depois de editado e compilado+source , basta dar ros2 interface show custom_interfaces/srv/example
+.apos isso tem q criar um codigo que siga a logica doq botou na interface, exemplo:
+interface:
+string move   # Signal to define the movement
+              # "Turn right" to make the robot turn in the right direction.
+              # "Turn left" to make the robot turn in the left direction. 
+              # "Stop" to make the robot stop the movement.
+
+---
+bool success  # Did it achieve it?
+
+codigo em c++ q usa essa interface : 
+#include "rclcpp/rclcpp.hpp"
+#include "custom_interfaces/srv/my_custom_service_message.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+
+#include <memory>
+
+using MyCustomServiceMessage = custom_interfaces::srv::MyCustomServiceMessage;
+using std::placeholders::_1;
+using std::placeholders::_2;
+
+class ServerNode : public rclcpp::Node
+{
+public:
+  ServerNode()
+  : Node("movement_server")
+  {
+
+    srv_ = create_service<MyCustomServiceMessage>("movement", std::bind(&ServerNode::moving_callback, this, _1, _2));
+    publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+
+  }
+
+private:
+  rclcpp::Service<MyCustomServiceMessage>::SharedPtr srv_;
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
+
+  void moving_callback(
+      const std::shared_ptr<MyCustomServiceMessage::Request> request,
+      const std::shared_ptr<MyCustomServiceMessage::Response>
+          response) 
+    {
+
+        auto message = geometry_msgs::msg::Twist();
+    
+        if (request->move == "Turn Right")
+        {   
+            // Send velocities to move the robot to the right
+            message.linear.x = 0.2;
+            message.angular.z = -0.2;
+            publisher_->publish(message);
+
+            // Set the response success variable to true
+            response->success = true;
+        }
+        else if (request->move == "Turn Left")
+        {
+            // Send velocities to stop the robot
+            message.linear.x = 0.2;
+            message.angular.z = 0.2;
+            publisher_->publish(message);
+
+            // Set the response success variable to false
+            response->success = true;
+        }
+        else if (request->move == "Stop")
+        {
+            // Send velocities to stop the robot
+            message.linear.x = 0.0;
+            message.angular.z = 0.0;
+            publisher_->publish(message);
+
+            // Set the response success variable to false
+            response->success = true;
+        }
+        else {
+            response->success = false;
+        }
+                
+    }
+};
+
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<ServerNode>());
+  rclcpp::shutdown();
+  return 0;
+}
+
+     *ACTION* (goal ,result and feedback)
+
+.Parecidos com services, a diferença eh q action pode ser cancelado enquanto executado e eles dão feedbacks ao client em tempo real
+.Action usa services to handle the goal and result e topic para feedback
+The node that provides the Action functionality has to contain an Action Server. The Action Server allows other nodes to call that Action functionality.
+The node that calls to the Action functionality has to contain an Action Client. The Action Client allows a node to connect to the Action Server of another node.
+ou seja,
+In summary, the workflow goes like this:
+
+The Client sends a goal to the Server. This will trigger the "start" of the Action.
+The Server sends feedback to the Client meanwhile the Action is taking place.
+Once the Action finishes, the Server returns a response to the Client.
+
+.ros2 action info </move_robot_as> -t    -This output, which may seem somewhat strange at first reading, tells us that the /move_robot_as Action uses the interface t3_action_msg/action/Move.
+<package_name>/action/<interface_name>
+
+.ros2 action send_goal <action_name> <action_type> <values> e ros2 action send_goal  -f <action_name> <action_type> <values> (pra trazer feedback junto)
+example: ros2 action send_goal /move_robot_as t3_action_msg/action/Move "{secs: 5}"
+
+parei na parte do result_callback do actions
+
+
+
+
+
+
+
 
