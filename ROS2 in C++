@@ -1294,10 +1294,175 @@ RMW MIDDLEWARE
 ROS 2 INFORMATION
 TOPIC LIST
 
+      *ROS2 components*
+Os codigos vistos ate entao são compilados em executaveis un por ves, sendo pelo launch ou executando seu proprio file foi um por vez, o ros2 components serve para modificar o sistema do robo
+enquanto o sistema estiver rodando, sem parar o sistema ou especificar a hora de rodar a compilação(run-time composition e compile-time composition respectivamente)
 
+passoa a passo:
 
+Cria uma pasta como sempre, dps dentro de include cria um . jpp e um .h e edita no cmake e cria um .cpp padrão no src q da um #include no hpp
+obs: usa o using namespace e registra o component no codigo 
+Exemplo .hpp:
 
+#ifndef COMPOSITION__MOVEROBOT_COMPONENT_HPP_
+#define COMPOSITION__MOVEROBOT_COMPONENT_HPP_
 
+#include "my_components/visibility_control.h"
+#include "rclcpp/rclcpp.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
+namespace my_components
+{
 
+class MoveRobot : public rclcpp::Node
+{
+public:
+  COMPOSITION_PUBLIC
+  explicit MoveRobot(const rclcpp::NodeOptions & options);
+
+protected:
+  void on_timer();
+
+private:
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;
+  rclcpp::TimerBase::SharedPtr timer_;
+};
+
+}  // namespace composition
+
+#endif  // COMPOSITION__MOVEROBOT_COMPONENT_HPP_
+
+exemplo .h:
+// Copyright 2016 Open Source Robotics Foundation, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef COMPOSITION__VISIBILITY_CONTROL_H_
+#define COMPOSITION__VISIBILITY_CONTROL_H_
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+// This logic was borrowed (then namespaced) from the examples on the gcc wiki:
+//     https://gcc.gnu.org/wiki/Visibility
+
+#if defined _WIN32 || defined __CYGWIN__
+  #ifdef __GNUC__
+    #define COMPOSITION_EXPORT __attribute__ ((dllexport))
+    #define COMPOSITION_IMPORT __attribute__ ((dllimport))
+  #else
+    #define COMPOSITION_EXPORT __declspec(dllexport)
+    #define COMPOSITION_IMPORT __declspec(dllimport)
+  #endif
+  #ifdef COMPOSITION_BUILDING_DLL
+    #define COMPOSITION_PUBLIC COMPOSITION_EXPORT
+  #else
+    #define COMPOSITION_PUBLIC COMPOSITION_IMPORT
+  #endif
+  #define COMPOSITION_PUBLIC_TYPE COMPOSITION_PUBLIC
+  #define COMPOSITION_LOCAL
+#else
+  #define COMPOSITION_EXPORT __attribute__ ((visibility("default")))
+  #define COMPOSITION_IMPORT
+  #if __GNUC__ >= 4
+    #define COMPOSITION_PUBLIC __attribute__ ((visibility("default")))
+    #define COMPOSITION_LOCAL  __attribute__ ((visibility("hidden")))
+  #else
+    #define COMPOSITION_PUBLIC
+    #define COMPOSITION_LOCAL
+  #endif
+  #define COMPOSITION_PUBLIC_TYPE
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // COMPOSITION__VISIBILITY_CONTROL_H_
+
+cmake adicionou isso:
+add_library(moverobot_component SHARED src/moverobot_component.cpp)
+target_compile_definitions(moverobot_component PRIVATE "COMPOSITION_BUILDING_DLL")
+ament_target_dependencies(moverobot_component
+  rclcpp
+  rclcpp_components
+  geometry_msgs)
+rclcpp_components_register_nodes(moverobot_component "my_components::MoveRobot")
+set(node_plugins "${node_plugins}my_components::MoveRobot;$<TARGET_FILE:moverobot_component>\n")
+
+install(
+	DIRECTORY include/
+	DESTINATION include
+)
+ament_export_targets(export_moverobot_component)
+install(TARGETS
+  moverobot_component 
+  EXPORT export_moverobot_component 
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
+
+exemplo .cpp:
+
+#include "my_components/moverobot_component.hpp"
+
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <utility>
+
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
+#include "geometry_msgs/msg/twist.hpp"
+
+using namespace std::chrono_literals;
+
+namespace my_components
+{
+MoveRobot::MoveRobot(const rclcpp::NodeOptions & options)
+: Node("moverobot", options)
+{
+  
+  pub_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+
+  timer_ = create_wall_timer(1s, std::bind(&MoveRobot::on_timer, this));
+}
+
+void MoveRobot::on_timer()
+{
+  auto msg = std::make_unique<geometry_msgs::msg::Twist>();
+  msg->linear.x = 0.3;
+  msg->angular.z = 0.3;
+  std::flush(std::cout);
+
+  pub_->publish(std::move(msg));
+}
+
+}
+
+#include "rclcpp_components/register_node_macro.hpp"
+
+RCLCPP_COMPONENTS_REGISTER_NODE(my_components::MoveRobot)
+
+Apos isso, executar: 
+ros2 component load /ComponentManager <pkg_name> <component_name> , nesse exemplo foi: ros2 component load /ComponentManager my_components my_components::MoveRobot
+
+ros2 component list - alem de listar vai mostraar o numero de id do componente
+ros2 component unload /ComponentManager <component_id> 
+pra parar o robo tem q dar um ros2 topic pub com a info dele pra parar
+
+obs: da pra fazer com launch tbm , qualquer coisa rever essa parte do curso, mas eh a mesma logica ja vista 
+obs2: da pra por service na logica do composition tbm
 
